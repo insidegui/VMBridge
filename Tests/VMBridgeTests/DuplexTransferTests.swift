@@ -11,7 +11,7 @@ import Testing
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: folder) }
             let source = folder.appendingPathComponent("source")
-            let bytes = Data(repeating: 0xBD, count: 4 * 1024 * 1024)
+            let bytes = Data(repeating: 0xBD, count: 16 * 1024 * 1024 + 17)
             try bytes.write(to: source)
             let hostOffers = host.bulkTransferOffers
             let guestOffers = guest.bulkTransferOffers

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Testing
 
@@ -18,6 +19,35 @@ import Testing
         await #expect(throws: (any Error).self) { try await write.value }
         await c.close()
         await d.close()
+    }
+
+    @Test func duplicatedSocketsUseBlockingIO() throws {
+        var descriptors: [Int32] = [-1, -1]
+        let result = descriptors.withUnsafeMutableBufferPointer {
+            unsafe Darwin.socketpair(AF_UNIX, SOCK_STREAM, 0, $0.baseAddress!)
+        }
+        #expect(result == 0)
+        defer { descriptors.forEach { Darwin.close($0) } }
+        #expect(fcntl(descriptors[0], F_SETFL, O_NONBLOCK) == 0)
+        let socket = try SocketLink(duplicating: descriptors[0])
+        defer { socket.cancel() }
+        // dup shares the file status flags with the original descriptor.
+        #expect(fcntl(descriptors[0], F_GETFL) & O_NONBLOCK == 0)
+    }
+
+    @Test func blockedWriteDoesNotPreventReadsOrCancellation() async throws {
+        let (a, b) = try socketPair()
+        let write = Task { try await a.write(Data(repeating: 0xBD, count: 16 * 1024 * 1024)) }
+        // Receiving a prefix proves the write started. Leave the rest unread
+        // so the send buffer fills while traffic flows in the other direction.
+        let prefix = try #require(await b.read())
+        #expect(!prefix.isEmpty)
+        try await b.write(Data([0x42]))
+        #expect(try await a.read() == Data([0x42]))
+        write.cancel()
+        await #expect(throws: (any Error).self) { try await write.value }
+        await a.close()
+        await b.close()
     }
 
     @Test func truncatedFrameFailsAtEOF() async throws {

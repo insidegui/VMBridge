@@ -24,6 +24,24 @@ The guest uses Darwin AF_VSOCK and connects to VMADDR_CID_HOST. It requires no
 IP address, Bonjour declaration, Bluetooth declaration, or working guest IP
 network. The host examples target demonstrates the corresponding public API.
 
+## Virtio socket compatibility
+
+Keep the socket in blocking mode for both connection establishment and I/O.
+macOS 14 guests can fail a nonblocking connect despite a zero `SO_ERROR`.
+On macOS 15, a nonblocking write can report success while losing bytes under
+Virtio receive-credit pressure. Readiness notifications and ordinary socket-pair
+tests do not protect against these guest-kernel behaviors.
+
+VMBridge runs blocking reads and writes on separate dispatch queues. Shutdown
+interrupts established I/O, and the descriptor is closed only after all active
+system calls return. A kernel send timeout bounds pending connects; it is cleared
+before transferring data so a paused VM does not introduce a write deadline.
+
+Run the smoke procedure on macOS 14 and macOS 15 guests. In particular, transfer
+more than 16 MiB in both directions, compare SHA-256 hashes, and repeat after
+restarting the guest process. Include simultaneous transfers to exercise credit
+pressure and ensure blocked writes cannot prevent reads from making progress.
+
 ## Smoke-test procedure
 
 1. Subscribe to connection state and requests on the host, then start its run
