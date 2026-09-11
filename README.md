@@ -3,6 +3,8 @@
 Typed, asynchronous messaging between a macOS virtual machine and its host,
 using Virtio sockets. One `VMConnection` represents one host–guest pair.
 
+> NOTE: this was developed for use in [VirtualBuddy](https://github.com/insidegui/VirtualBuddy), not as a general-purpose library. Contributions that are not related to VirtualBuddy will not be accepted. Feel free to fork and maintain your own version if you’d like to use the library for other purposes.
+
 VMBridge requires macOS 14 or later and a Swift 6.3.3 or newer toolchain with
 strict memory safety support. It compiles in Swift 6 language mode. The package
 has no external dependencies and contains two library products:
